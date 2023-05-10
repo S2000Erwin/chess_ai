@@ -122,11 +122,9 @@ class King(Piece):
                         if rook.grid_pos[1] < self.grid_pos[1] else range(self.grid_pos[1] + 1, rook.grid_pos[1])
                     gps = map(lambda x: chess.report((self.grid_pos[0], x), self.color) == 'none', xs)
                     if all(gps):
-                        danger_zone = []
-                        oppo_pieces = filter(lambda x: x.color != self.color, chess.pieces)
-                        for oppo_piece in oppo_pieces:
-                            danger_zone += oppo_piece.get_legal_moves(chess)
-                        gs = map(lambda x: (self.grid_pos[0], x) in set(danger_zone), xs)
+                        ys = range(xs[0] - 1, xs[-1] + 1)
+                        danger_zone = chess.get_danger_zone(self.color)
+                        gs = map(lambda x: (self.grid_pos[0], x) in danger_zone, ys)
                         if not any(gs):
                             if rook.grid_pos[1] < self.grid_pos[1]:
                                 column = self.grid_pos[1] - 2
@@ -228,6 +226,13 @@ class Chess:
                 return self.compute_legal_moves(piece)
         return []
 
+    def get_danger_zone(self, color):
+        danger_zone = []
+        oppo_pieces = filter(lambda x: x.color != color, self.pieces)
+        for oppo_piece in oppo_pieces:
+            danger_zone += oppo_piece.get_legal_moves(self)
+        return set(danger_zone)
+
     def apply_move(self, source, destination):
         # check the state
         for piece in self.pieces:
@@ -268,8 +273,9 @@ class Chess:
                     # check?
                     self.check = False
                     if self.winner == 'none':
+                        danger_zone = self.get_danger_zone('black' if self.player == 'white' else 'white')
                         oppo_king = next(filter(lambda x: isinstance(x, King) and x.color != self.player, self.pieces))
-                        if oppo_king.grid_pos in piece.get_legal_moves(self):
+                        if oppo_king.grid_pos in danger_zone:
                             self.check = True
                             print('Check!')
                     self.player = 'white' if self.player == 'black' else 'black'
