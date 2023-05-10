@@ -165,9 +165,7 @@ class Pawn(Piece):
         return legal_moves
 
 
-def create_pieces(screen):
-    piece_images = PiecesImage('chess_pieces.png', screen)
-
+def create_pieces(piece_images):
     return [
         Rook(piece_images.get_image('black', 'rook'), 'black', (0, 0)),
         Knight(piece_images.get_image('black', 'knight'), 'black', (0, 1)),
@@ -221,10 +219,16 @@ class Chess:
         else:
             return 'OOB'
 
-    def get_legal_moves(self, grid_pos):
+    def get_piece(self, grid_pos):
         for piece in self.pieces:
-            if grid_pos == piece.grid_pos and piece.color == self.player:
-                return self.compute_legal_moves(piece)
+            if grid_pos == piece.grid_pos:
+                return piece
+        return None
+
+    def get_legal_moves(self, grid_pos):
+        piece = self.get_piece(grid_pos)
+        if piece and piece.color == self.player:
+            return self.compute_legal_moves(piece)
         return []
 
     def get_danger_zone(self, color):
@@ -234,10 +238,7 @@ class Chess:
             danger_zone += oppo_piece.get_legal_moves(self)
         return set(danger_zone)
 
-    def promotion(self, pawn):
-        pass
-
-    def apply_move(self, source, destination):
+    def apply_move(self, source, destination, promotion=None):
         # check the state
         for piece in self.pieces:
             if piece.grid_pos == source:
@@ -270,16 +271,24 @@ class Chess:
                             rook = next(filter(lambda x: x.grid_pos == gp, self.pieces))
                             rook.grid_pos = gpd
                             rook.moved = True
-
                         piece.grid_pos = destination
+                        if promotion and isinstance(piece, Pawn) and (destination[0] == 0 or destination[0] == 7):
+                            (role, image) = promotion
+                            if role == 'queen':
+                                new_piece = Queen(image, piece.color, destination)
+                            elif role == 'bishop':
+                                new_piece = Bishop(image, piece.color, destination)
+                            elif role == 'knight':
+                                new_piece = Knight(image, piece.color, destination)
+                            else:
+                                new_piece = Rook(image, piece.color, destination)
+                            self.pieces.remove(piece)
+                            self.deadpile.append(piece)
+                            self.pieces.append(new_piece)
+                            piece = new_piece
                         piece.moved = True
                         if isinstance(piece, Pawn) and 2 == abs(source[0] - destination[0]):
                             self.en_passant = destination
-                        if isinstance(piece, Pawn):
-                            if (piece.color == 'white' and piece.grid_pos[0] == 0) or \
-                                    (piece.color == 'black' and piece.grid_pos[0] == 7):
-                                # Promotion!
-                                self.promotion(piece)
                         # check?
                         self.check = False
                         if self.winner == 'none':
@@ -296,7 +305,8 @@ class App:
     def __init__(self):
         pg.init()
         self.screen = pg.display.set_mode(RESOLUTION)
-        self.chess = Chess(create_pieces(self.screen))
+        self.piece_images = PiecesImage('chess_pieces.png', self.screen)
+        self.chess = Chess(create_pieces(self.piece_images))
         self.state = 'free'
         self.hover = None
         self.source = None
@@ -335,13 +345,11 @@ class App:
                         left, mid, right = pg.mouse.get_pressed(3)
                         if right:
                             # right-click
-                            print("right-click")
                             self.state = 'free'
                             self.hover = None
                             self.source = None
                         elif left:
                             # left-click
-                            print('left-click')
                             grid_pos = get_grid(pg.mouse.get_pos())
                             if self.state == 'free':
                                 side = self.chess.report(grid_pos, self.chess.player)
@@ -350,7 +358,16 @@ class App:
                                     self.state = 'selected'
                             elif self.state == 'selected':
                                 if grid_pos in self.chess.get_legal_moves(self.source):
-                                    self.chess.apply_move(self.source, grid_pos)
+                                    if isinstance(self.chess.get_piece(self.source), Pawn) and \
+                                            (grid_pos[0] == 0 or grid_pos[0] == 7):
+                                        answer = 0
+                                        while answer < 1 or answer > 4:
+                                            answer = int(input('Promotion: [1]Queen [2]Bishop [3]Knight [4]Rook'))
+                                        role = ['queen', 'bishop', 'knight', 'rook'][answer - 1]
+                                        image = self.piece_images.get_image(self.chess.player, role)
+                                        self.chess.apply_move(self.source, grid_pos, promotion=(role, image))
+                                    else:
+                                        self.chess.apply_move(self.source, grid_pos)
                                     self.state = 'free'
                                     self.hover = None
                                     self.source = None
