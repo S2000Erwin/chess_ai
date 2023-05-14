@@ -314,14 +314,18 @@ class Human(Player):
 
 
 class Monkey(Player):
-    def get_move(self, chess):
+    def get_move(self, chess, piece_images):
         pieces = list(filter(lambda x: x.color == self.color, chess.pieces))
         moves = []
         for piece in pieces:
             destinations = piece.get_legal_moves(chess)
             for destination in destinations:
                 moves.append((piece.grid_pos, destination))
-        return random.choice(moves), 'queen'
+        move = random.choice(moves)
+        promotion = None
+        if (destination[0] == 0 or destination[0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
+            promotion = 'queen', piece_images.get_image(self.color, 'queen')
+        return random.choice(moves), promotion
 
 
 class App:
@@ -403,7 +407,7 @@ class App:
                                         self.hover = None
                                         self.source = None
                     elif isinstance(current_player, Monkey):
-                        move, promotion = current_player.get_move(self.chess)
+                        move, promotion = current_player.get_move(self.chess, self.piece_images)
                         print(move, promotion)
                         self.chess.apply_move(move[0], move[1], promotion=promotion)
 
