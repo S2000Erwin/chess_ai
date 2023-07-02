@@ -304,6 +304,7 @@ class Chess:
                 break
 
 
+# Introduce Player class and sub-class to different types of AI bots
 class Player:
     def __init__(self, color):
         self.color = color

@@ -10,6 +10,14 @@ WIDTH, HEIGHT = 8 * GRID, 8 * GRID
 RESOLUTION = WIDTH, HEIGHT
 
 
+# Follow the procedure below to make sense of the implementation
+# 1. Create Chess class, populate its __init__
+# 2. Create App class, implement the full class
+# 3. implement the functions `grid_to_rect` and `get_grid`
+# 3. Re-visit Chess class, start from `get_legal_moves`
+# 4. Implement `get_legal_moves` in Piece class
+
+
 class PiecesImage:
     def __init__(self, image_filename, screen):
         self.piece_infos = (
@@ -38,6 +46,7 @@ class Piece:
     def draw(self, screen):
         screen.blit(self.image, (self.grid_pos[1] * GRID, self.grid_pos[0] * GRID))
 
+    # Do this third
     def trace_legal_moves(self, chess, grid_pos, dx, dy):
         gp = grid_pos[0] + dy, grid_pos[1] + dx
         if 0 <= gp[0] < 8 and 0 <= gp[1] < 8:
@@ -51,23 +60,31 @@ class Piece:
         else:
             return []
 
+    # Overall, do this last. When `get_legal_moves` is being done, follow the hints below
     def get_legal_moves(self, chess):
+        # Do this second
         def trace_orthogonal():
             return self.trace_legal_moves(chess, self.grid_pos, 0, -1) + \
                    self.trace_legal_moves(chess, self.grid_pos, 0, 1) + \
                    self.trace_legal_moves(chess, self.grid_pos, 1, 0) + \
                    self.trace_legal_moves(chess, self.grid_pos, -1, 0)
 
+        # Do this fifth
         def trace_diagonal():
             return self.trace_legal_moves(chess, self.grid_pos, -1, -1) + \
                    self.trace_legal_moves(chess, self.grid_pos, 1, 1) + \
                    self.trace_legal_moves(chess, self.grid_pos, 1, -1) + \
                    self.trace_legal_moves(chess, self.grid_pos, -1, 1)
 
+        # Do this first and do "rook" only
         if self.role == 'rook':
             return trace_orthogonal()
+        # Do this forth
+        # checkpoint: challenge students to do "bishop" after seeing how "rook" was done.
         elif self.role == 'bishop':
             return trace_diagonal()
+        # Do "queen" and else last.
+        # checkpoint: challenge students to do "queen" after seeing how "rook" and "bishop" were done.
         elif self.role == 'queen':
             return trace_diagonal() + trace_orthogonal()
         else:
@@ -110,6 +127,7 @@ def grid_to_rect(grid_pos):
     return pg.Rect(coord, (GRID, GRID))
 
 
+# Create Chess and App classes before proceeding to `get_legal_moves` of the Piece
 class Chess:
     def __init__(self, pieces):
         self.pieces = pieces
@@ -137,6 +155,7 @@ class Chess:
         return []
 
 
+# Refactor App class after Chess class
 class App:
     def __init__(self):
         pg.init()
@@ -162,6 +181,7 @@ class App:
                 s.fill('blue')
                 s.set_alpha(150)
                 self.screen.blit(s, grid_to_rect(self.hover))
+                # Up to this point, populate `get_legal_moves` in class chess
                 legal_moves = self.chess.get_legal_moves(self.hover)
                 s.fill('yellow')
                 s.set_alpha(150)

@@ -9,7 +9,12 @@ WIDTH, HEIGHT = 8 * GRID, 8 * GRID
 RESOLUTION = WIDTH, HEIGHT
 
 
+# Introduce Python `class`.
+#   Talk through `self`, `__init__`, member functions before proceeding to coding.
 class PiecesImage:
+    # Re-write the image producer into one class
+    # Load the big collated picture once and then dispatch sub-images
+    # whenever they are needed.
     def __init__(self, image_filename, screen):
         self.piece_infos = (
             ('black', 'king'), ('black', 'queen'), ('black', 'bishop'), ('black', 'knight'),
@@ -20,6 +25,7 @@ class PiecesImage:
         self.w //= 4
         self.h //= 3
 
+    # Dispatch a sub-image to a piece
     def get_image(self, color, role):
         idx = self.piece_infos.index((color, role))
         x = self.w * (idx % 4)
@@ -27,17 +33,21 @@ class PiecesImage:
         return self.pieces_image.subsurface((x, y), (self.w, self.h))
 
 
+# This is the class for one piece
 class Piece:
     def __init__(self, image, color, role, grid_pos):
+        # scale the image whenever it is gotten initially
         self.image = pg.transform.scale(image, (GRID, GRID))
         self.color = color
         self.role = role
         self.grid_pos = grid_pos
 
     def draw(self, screen):
+        # remember we need the `screen` for Bliting
         screen.blit(self.image, (self.grid_pos[1] * GRID, self.grid_pos[0] * GRID))
 
-
+# This function is to create all pieces
+# Don't try to generate all. Try it step by step staring from Rook.
 def create_pieces(screen):
     piece_images = PiecesImage('chess_pieces.png', screen)
 
@@ -50,8 +60,9 @@ def create_pieces(screen):
         Piece(piece_images.get_image('black', 'bishop'), 'black', 'bishop', (0, 5)),
         Piece(piece_images.get_image('black', 'knight'), 'black', 'knight', (0, 6)),
         Piece(piece_images.get_image('black', 'rook'), 'black', 'rook', (0, 7)),
+        # add Pawn creation last. The asterisk `*` is necessary to "flatten" 8 pieces
         *[Piece(piece_images.get_image('black', 'pawn'), 'black', 'pawn', (1, n)) for n in range(8)],
-
+        # same as above
         *[Piece(piece_images.get_image('white', 'pawn'), 'white', 'pawn', (6, n)) for n in range(8)],
         Piece(piece_images.get_image('white', 'rook'), 'white', 'rook', (7, 0)),
         Piece(piece_images.get_image('white', 'knight'), 'white', 'knight', (7, 1)),
@@ -78,4 +89,6 @@ pieces = create_pieces(screen)
 while True:
     pg.display.flip()
     draw_board(screen)
+    # teach this new form of "for" loop last.
+    # Do the traditional "for" first and then re-order
     [piece.draw(screen) for piece in pieces]

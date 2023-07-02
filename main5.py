@@ -75,8 +75,12 @@ class Piece:
             return trace_diagonal(True)
         elif self.role == 'queen':
             return trace_diagonal(True) + trace_orthogonal(True)
+        # Note that this is not a full implement of King's move
+        # We will do Castle later
         elif self.role == 'king':
             return trace_diagonal(False) + trace_orthogonal(False)
+        # There are many ways to implement "Knight".
+        # checkpoint: Let students implement "Knight" in their own ways
         elif self.role == 'knight':
             moves = (
                 (-1, -2), (1, -2),

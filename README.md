@@ -19,7 +19,6 @@ Teach Grade 7~9 students how to write a Chess game in Python from scratch and th
 * You could make two bots to play each other
 * TODO: Reinforcement Learning (Q-Learning)
 * TODO: Deep-Q Learning
-* TODO: More comments and checkpoints for educators and students
 
 Enjoy!
 

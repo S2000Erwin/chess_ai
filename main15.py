@@ -426,7 +426,9 @@ class Greedy(Player):
         return move, promotion
 
 
+# Explain Minimax in details but a understandable way before proceed to implementing `Thinky`
 class Thinky(Player):
+    # 1. break up `get_all_moves` to its own method
     def get_all_moves(self, chess, color):
         pieces = list(filter(lambda x: x.color == color, chess.pieces))
         moves = []
@@ -436,6 +438,7 @@ class Thinky(Player):
                 moves.append((piece.grid_pos, destination))
         return moves
 
+    # 2. implement minimax by setting depth to 0 in `get_move`
     def minimax(self, chess, depth, piece_images):
         moves = self.get_all_moves(chess, chess.player)
         if depth == 0:
@@ -453,6 +456,8 @@ class Thinky(Player):
                 promotion = 'queen', piece_images.get_image(chess.player, 'queen')
             return move, promotion, max_value
         else:
+            # set this to random a move first when the original depth is 0
+            # complete the implementation below when original depth is 1
             # pre-flipped because of the opposite player's score
             extreme_value = -100000000 if chess.player == 'white' else 100000000
             extreme_move_promotions = []
@@ -473,6 +478,7 @@ class Thinky(Player):
             return extreme_move, extreme_promotion, extreme_value
 
     def get_move(self, chess, piece_images):
+        # first set depth to 0 and run the game, then set to 1
         move, promotion, value = self.minimax(chess, 1, piece_images)
         return move, promotion
 

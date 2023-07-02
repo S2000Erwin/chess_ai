@@ -22,6 +22,14 @@ WIDTH, HEIGHT = 8 * GRID, 8 * GRID
 RESOLUTION = WIDTH, HEIGHT
 
 
+# 1. assign different types of Pieces a `value`
+# 2. `evaluate` in Chess class
+# 3. print the current value at each move
+# 4. run the game so to get a feeling of how `evaluate` works
+# 5. remove the current value at each move
+# 6. implement `clone` and `clone_params`
+# 7. Complete Greedy class
+
 class PiecesImage:
     def __init__(self, image_filename, screen):
         self.piece_infos = (

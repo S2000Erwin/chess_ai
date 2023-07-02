@@ -14,6 +14,8 @@ GRID = 80
 WIDTH, HEIGHT = 8 * GRID, 8 * GRID
 RESOLUTION = WIDTH, HEIGHT
 
+# Instead of using if .. elif .. on `role`, we create different classes for different type of Pieces
+
 
 class PiecesImage:
     def __init__(self, image_filename, screen):
@@ -76,6 +78,7 @@ class Piece:
         return []
 
 
+# Each type has its own class which is a sub-class of `Piece`
 class Rook(Piece):
     def get_legal_moves(self, chess):
         return self.trace_orthogonal(chess, True)

@@ -13,6 +13,9 @@ GRID = 80
 WIDTH, HEIGHT = 8 * GRID, 8 * GRID
 RESOLUTION = WIDTH, HEIGHT
 
+# 1. Introduce `winner` in class Chess
+# 2. adjust `winner` in class Chess
+# 3. check `winner` in class Chess
 
 class PiecesImage:
     def __init__(self, image_filename, screen):
@@ -162,6 +165,7 @@ class Chess:
         self.pieces = pieces
         self.deadpile = []
         self.player = 'white'
+        # Introduce `winner`
         self.winner = 'none'
 
     def compute_legal_moves(self, piece):
@@ -195,6 +199,7 @@ class Chess:
                             if piece.grid_pos == destination and piece.color != self.player:
                                 self.pieces.remove(piece)
                                 self.deadpile.append(piece)
+                                # adjust `winner`
                                 if piece.role == 'king':
                                     self.winner = 'black' if piece.color == 'white' else 'white'
                                     print(f'{self.winner} won!!!')
@@ -242,6 +247,7 @@ class App:
                 if event.type == pg.QUIT:
                     exit(0)
                 if event.type == pg.MOUSEMOTION:
+                    # check `chess.winner`
                     if self.state == 'free' and self.chess.winner == 'none':
                         pos = pg.mouse.get_pos()
                         self.hover = get_grid(pos)

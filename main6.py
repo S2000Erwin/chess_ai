@@ -92,6 +92,7 @@ class Piece:
                 if side == 'opponent' or side == 'none':
                     legal_moves.append(gp)
             return legal_moves
+        # En Passant will be implemented later
         elif self.role == 'pawn':
             legal_moves = []
             dy = -1 if self.color == 'white' else 1

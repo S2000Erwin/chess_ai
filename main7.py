@@ -12,6 +12,8 @@ GRID = 80
 WIDTH, HEIGHT = 8 * GRID, 8 * GRID
 RESOLUTION = WIDTH, HEIGHT
 
+# 1. Implement the mouse control in class App
+# 2. Implement `apply_move` in class Chess
 
 class PiecesImage:
     def __init__(self, image_filename, screen):
@@ -182,6 +184,7 @@ class Chess:
                 return self.compute_legal_moves(piece)
         return []
 
+    # Implement second
     def apply_move(self, source, destination):
         # check the state
         for piece in self.pieces:
@@ -241,6 +244,7 @@ class App:
                         pos = pg.mouse.get_pos()
                         self.hover = get_grid(pos)
                 elif event.type == pg.MOUSEBUTTONDOWN:
+                    # Implement first
                     left, mid, right = pg.mouse.get_pressed(3)
                     if right:
                         # right-click

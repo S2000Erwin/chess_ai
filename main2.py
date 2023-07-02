@@ -29,14 +29,22 @@ print(black_knight.get_size())
 
 
 def draw_board(screen):
+    # row is horizontal, from top to bottom. Top row is index 0 and bottom is index 7
     for row in range(8):
+        # column is vertical, from left to right. Leftmost column is index 0 and rightmost index 7
         for column in range(8):
+            # checkpoint: challenge students how color is determined
+            #             given row and column indices.
             color = 'white' if (row + column) % 2 == 0 else 'black'
+            # Given row and column, what are the coordinates?
             coord = row * GRID, column * GRID
             screen.fill(color, pg.Rect(coord, (GRID, GRID)))
+
 
 while True:
     pg.display.flip()
     draw_board(screen)
+    # Don't add this line before running the game at least once
+    #   to see why we need to scale.
     bh = pg.transform.scale(black_king, (GRID, GRID))
     screen.blit(bh, (0.0, 0.0))

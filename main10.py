@@ -214,7 +214,7 @@ class Chess:
                         # capture opponent piece
                         for oppo_piece in list(filter(lambda x: x.color != self.player, self.pieces)):
                             if (oppo_piece.grid_pos == destination) or \
-                                    (self.en_passant and isinstance(piece, Pawn) and
+                                    (self.en_passant and isinstance(piece, Pawn) and # en passant
                                      destination[1] == oppo_piece.grid_pos[1] and
                                      1 == abs(destination[0] - oppo_piece.grid_pos[0]) and
                                      1 == abs(piece.grid_pos[1] - oppo_piece.grid_pos[1])
@@ -228,11 +228,12 @@ class Chess:
                         # move
                         self.en_passant = None  # Muse be placed AFTER capture
                         piece.grid_pos = destination
+                        # check en passant
                         if isinstance(piece, Pawn) and 2 == abs(source[0] - destination[0]):
                             self.en_passant = destination
-
                         self.player = 'white' if self.player == 'black' else 'black'
                 break
+
 
 class App:
     def __init__(self):
