@@ -1,5 +1,5 @@
 # chess_ai
-Teach Grade 7~9 students how to write a Chess game from scratch and then tinker with different types of bots and AI.
+Teach Grade 7~9 students how to write a Chess game in Python from scratch and then tinker with different types of bots and AI.
 
 ## Descriptions
 
