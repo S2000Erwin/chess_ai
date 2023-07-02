@@ -1,6 +1,12 @@
 # chess_ai
 Teach Grade 7~9 students how to write a Chess game in Python from scratch and then tinker with different types of bots and AI.
 
+## Features
+
+* this is primarily used for STEM education purpose
+* it takes a step-by-step approach
+* no tricky syntax is used
+ 
 ## Descriptions
 
 * Each main?.py is a stand-alone Python source code that can run.
@@ -13,6 +19,7 @@ Teach Grade 7~9 students how to write a Chess game in Python from scratch and th
 * You could make two bots to play each other
 * TODO: Reinforcement Learning (Q-Learning)
 * TODO: Deep-Q Learning
+* TODO: More comments and checkpoints for educators and students
 
 Enjoy!
 
