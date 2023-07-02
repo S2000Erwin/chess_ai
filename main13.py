@@ -325,7 +325,7 @@ class Monkey(Player):
         promotion = None
         if (destination[0] == 0 or destination[0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
             promotion = 'queen', piece_images.get_image(self.color, 'queen')
-        return random.choice(moves), promotion
+        return move, promotion
 
 
 class App:
