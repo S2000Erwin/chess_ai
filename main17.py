@@ -490,7 +490,7 @@ class Thinky(Player):
 
     def get_move(self, chess, piece_images):
         # 4. initialize alpha and beta
-        move, promotion, value = self.minimax(chess, 2, piece_images, -math.inf, math.inf)
+        move, promotion, value = self.minimax(chess, 3, piece_images, -math.inf, math.inf)
         return move, promotion
 
 

@@ -17,6 +17,9 @@ Teach Grade 7~9 students how to write a Chess game in Python from scratch and th
 * In main14.py, a slightly better AI, Greedy, makes its debut.
 * Ultimately, in main15.py, Thinky will utilize Minimax algorithm to defeat you!
 * You could make two bots to play each other
+* main16.py provides an UNDO facility
+* main17.py is alpha beta pruning which speeds up MinMax
+* TODO: checkmate! detection
 * TODO: Reinforcement Learning (Q-Learning)
 * TODO: Deep-Q Learning
 
