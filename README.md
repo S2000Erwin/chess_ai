@@ -19,7 +19,7 @@ Teach Grade 7~9 students how to write a Chess game in Python from scratch and th
 * You could make two bots to play each other
 * main16.py provides an UNDO facility
 * main17.py is alpha beta pruning which speeds up MinMax
-* TODO: checkmate! detection
+* main18.py adds checkmate detection
 * TODO: Reinforcement Learning (Q-Learning)
 * TODO: Deep-Q Learning
 
