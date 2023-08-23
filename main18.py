@@ -458,6 +458,7 @@ indent = 0
 class Thinky(Player):
     def minimax(self, chess, depth, piece_images, alpha, beta):
         moves = chess.get_all_moves()
+        global indent
         if depth == 0:
             def get_value(move):
                 next_chess = chess.clone()
@@ -471,7 +472,6 @@ class Thinky(Player):
             promotion = None
             if (moves[1][0] == 0 or moves[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
                 promotion = 'queen', piece_images.get_image(chess.player, 'queen')
-            global indent
             print(' ' * 4 * indent, end='')
             print(f'{depth}: move={move} value={max_value}')
             return move, promotion, max_value
@@ -509,7 +509,7 @@ class Thinky(Player):
             return extreme_move, extreme_promotion, extreme_value
 
     def get_move(self, chess, piece_images):
-        move, promotion, value = self.minimax(chess, 3, piece_images, -math.inf, math.inf)
+        move, promotion, value = self.minimax(chess, 2, piece_images, -math.inf, math.inf)
         return move, promotion
 
 
