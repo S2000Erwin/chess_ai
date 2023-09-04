@@ -1,6 +1,6 @@
 import random
 import pygame as pg
-from copy import deepcopy, copy
+import math
 
 # Lesson 1: read the files
 # Lesson 2: draw the board and scale the piece
@@ -18,6 +18,12 @@ from copy import deepcopy, copy
 # Lesson 14: Static Evaluation and clone
 # Lesson 15: Think in More Steps (MiniMax)
 # Lesson 16: Undo
+# Lesson 17: Alpha/Beta Pruning (and fix infinity loop in castling)
+# Lesson 18: Checkmate!, no move and add Notation
+# Lesson 19: Refactor draw and image and fix danger_zone
+# Lesson 20: Q-Learning: Setup Q-Matrix and train one game
+# Lesson 21: Multiple games training
+
 
 GRID = 80
 WIDTH, HEIGHT = 8 * GRID, 8 * GRID
@@ -46,9 +52,10 @@ def apply_dx_dy(grid_pos, dxdy):
     return grid_pos[0] + dxdy[1], grid_pos[1] + dxdy[0]
 
 
+# 1. Identify and remove the draw function
 class Piece:
-    def __init__(self, image, color, grid_pos):
-        self.image = pg.transform.scale(image, (GRID, GRID))
+    # 2. remove image
+    def __init__(self, color, grid_pos):
         self.color = color
         self.grid_pos = grid_pos
         self.moved = False
@@ -59,62 +66,73 @@ class Piece:
     def value(self):
         return 0
 
-    def draw(self, screen):
-        screen.blit(self.image, (self.grid_pos[1] * GRID, self.grid_pos[0] * GRID))
+    # 6. get_role()
+    def get_role(self):
+        return 'unknown'
 
-    def trace_legal_moves(self, chess, grid_pos, dx, dy, cont):
+    def trace_legal_moves(self, chess, grid_pos, dx, dy, cont, danger_zone):
         gp = apply_dx_dy(grid_pos, (dx, dy))
         if 0 <= gp[0] < 8 and 0 <= gp[1] < 8:
+            # onboard
             side = chess.report(gp, self.color)
             if side == 'friend':
-                return []
+                if danger_zone:
+                    return [gp]
+                else:
+                    return []
             elif side == 'opponent':
                 return [gp]
             else:
-                return [gp] + (self.trace_legal_moves(chess, gp, dx, dy, cont) if cont else [])
+                return [gp] + (self.trace_legal_moves(chess, gp, dx, dy, cont, danger_zone) if cont else [])
         else:
             return []
 
-    def trace_orthogonal(self, chess, cont):
-        return self.trace_legal_moves(chess, self.grid_pos, 0, -1, cont) + \
-               self.trace_legal_moves(chess, self.grid_pos, 0, 1, cont) + \
-               self.trace_legal_moves(chess, self.grid_pos, 1, 0, cont) + \
-               self.trace_legal_moves(chess, self.grid_pos, -1, 0, cont)
+    def trace_orthogonal(self, chess, cont, danger_zone):
+        return self.trace_legal_moves(chess, self.grid_pos, 0, -1, cont, danger_zone) + \
+               self.trace_legal_moves(chess, self.grid_pos, 0, 1, cont, danger_zone) + \
+               self.trace_legal_moves(chess, self.grid_pos, 1, 0, cont, danger_zone) + \
+               self.trace_legal_moves(chess, self.grid_pos, -1, 0, cont, danger_zone)
 
-    def trace_diagonal(self, chess, cont):
-        return self.trace_legal_moves(chess, self.grid_pos, -1, -1, cont) + \
-               self.trace_legal_moves(chess, self.grid_pos, 1, 1, cont) + \
-               self.trace_legal_moves(chess, self.grid_pos, 1, -1, cont) + \
-               self.trace_legal_moves(chess, self.grid_pos, -1, 1, cont)
+    def trace_diagonal(self, chess, cont, danger_zone):
+        return self.trace_legal_moves(chess, self.grid_pos, -1, -1, cont, danger_zone) + \
+               self.trace_legal_moves(chess, self.grid_pos, 1, 1, cont, danger_zone) + \
+               self.trace_legal_moves(chess, self.grid_pos, 1, -1, cont, danger_zone) + \
+               self.trace_legal_moves(chess, self.grid_pos, -1, 1, cont, danger_zone)
 
-    def get_legal_moves(self, chess):
+    def get_legal_moves(self, chess, ignore_castile=False):
         print("not implemented")
         return []
 
 
 class Rook(Piece):
     def clone(self):
-        new = Rook(self.image, self.color, self.grid_pos)
+        new = Rook(self.color, self.grid_pos)
         super().clone_params(new)
         return new
 
     def value(self):
         return 10
 
-    def get_legal_moves(self, chess):
-        return self.trace_orthogonal(chess, True)
+    def get_role(self):
+        return 'rook'
+
+    def get_legal_moves(self, chess, ignore_castle=False):
+        return self.trace_orthogonal(chess, True, ignore_castle)
 
 
 class Knight(Piece):
     def clone(self):
-        new = Knight(self.image, self.color, self.grid_pos)
+        new = Knight(self.color, self.grid_pos)
         super().clone_params(new)
         return new
 
     def value(self):
         return 2
 
-    def get_legal_moves(self, chess):
+    def get_role(self):
+        return 'knight'
+
+    def get_legal_moves(self, chess, ignore_castle=False):
         moves = (
             (-1, -2), (1, -2),
             (-1, 2), (1, 2),
@@ -125,49 +143,58 @@ class Knight(Piece):
         for move in moves:
             gp = apply_dx_dy(self.grid_pos, move)
             side = chess.report(gp, self.color)
-            if side == 'opponent' or side == 'none':
+            if side == 'opponent' or side == 'none' or ignore_castle:
                 legal_moves.append(gp)
         return legal_moves
 
 
 class Bishop(Piece):
     def clone(self):
-        new = Bishop(self.image, self.color, self.grid_pos)
+        new = Bishop(self.color, self.grid_pos)
         super().clone_params(new)
         return new
 
     def value(self):
         return 5
 
-    def get_legal_moves(self, chess):
-        return self.trace_diagonal(chess, True)
+    def get_role(self):
+        return 'bishop'
+
+    def get_legal_moves(self, chess, ignore_castle=False):
+        return self.trace_diagonal(chess, True, ignore_castle)
 
 
 class Queen(Piece):
     def clone(self):
-        new = Queen(self.image, self.color, self.grid_pos)
+        new = Queen(self.color, self.grid_pos)
         super().clone_params(new)
         return new
 
     def value(self):
         return 100
 
-    def get_legal_moves(self, chess):
-        return self.trace_orthogonal(chess, True) + self.trace_diagonal(chess, True)
+    def get_role(self):
+        return 'queen'
+
+    def get_legal_moves(self, chess, ignore_castle=False):
+        return self.trace_orthogonal(chess, True, ignore_castle) + self.trace_diagonal(chess, True, ignore_castle)
 
 
 class King(Piece):
     def clone(self):
-        new = King(self.image, self.color, self.grid_pos)
+        new = King(self.color, self.grid_pos)
         super().clone_params(new)
         return new
 
     def value(self):
         return 10000
 
-    def get_legal_moves(self, chess):
-        legal_moves = self.trace_orthogonal(chess, False) + self.trace_diagonal(chess, False)
-        if not self.moved:
+    def get_role(self):
+        return 'king'
+
+    def get_legal_moves(self, chess, ignore_castle=False):
+        legal_moves = self.trace_orthogonal(chess, False, ignore_castle) + self.trace_diagonal(chess, False, ignore_castle)
+        if not self.moved and not ignore_castle:
             for rook in filter(lambda x: isinstance(x, Rook) and x.color == self.color, chess.pieces):
                 if not rook.moved:
                     xs = range(rook.grid_pos[1] + 1, self.grid_pos[1]) \
@@ -183,19 +210,26 @@ class King(Piece):
                             else:
                                 column = self.grid_pos[1] + 2
                             legal_moves.append((self.grid_pos[0], column))
+        # 10. remove all moves from within danger_zone
+        if not ignore_castle:
+            danger_zone = chess.get_danger_zone(self.color)
+            legal_moves = list(filter(lambda move: move not in danger_zone, legal_moves))
         return legal_moves
 
 
 class Pawn(Piece):
     def clone(self):
-        new = Pawn(self.image, self.color, self.grid_pos)
+        new = Pawn(self.color, self.grid_pos)
         super().clone_params(new)
         return new
 
     def value(self):
         return 1
 
-    def get_legal_moves(self, chess):
+    def get_role(self):
+        return 'pawn'
+
+    def get_legal_moves(self, chess, ignore_castle=False):
         legal_moves = []
         dy = -1 if self.color == 'white' else 1
         # en passant capture?
@@ -206,45 +240,47 @@ class Pawn(Piece):
         for dx in [-1, 1]:
             gp = apply_dx_dy(self.grid_pos, (dx, dy))
             side = chess.report(gp, self.color)
-            if side == 'opponent':
+            if side == 'opponent' or ignore_castle: # 11. fix pawn movement for danger_zone
                 legal_moves.append(gp)
         # march 1?
-        gp = apply_dx_dy(self.grid_pos, (0, dy))
-        side = chess.report(gp, self.color)
-        if side == 'none':
-            legal_moves.append(gp)
-            # march 2?
-            if (self.color == 'black' and self.grid_pos[0] == 1) or \
-                    (self.color == 'white' and self.grid_pos[0] == 6):
-                dy = -2 if self.color == 'white' else 2
-                gp = apply_dx_dy(self.grid_pos, (0, dy))
-                side = chess.report(gp, self.color)
-                if side == 'none':
-                    legal_moves.append(gp)
+        if not ignore_castle: # 11. fix pawn movement for danger_zone
+            gp = apply_dx_dy(self.grid_pos, (0, dy))
+            side = chess.report(gp, self.color)
+            if side == 'none':
+                legal_moves.append(gp)
+                # march 2?
+                if (self.color == 'black' and self.grid_pos[0] == 1) or \
+                        (self.color == 'white' and self.grid_pos[0] == 6):
+                    dy = -2 if self.color == 'white' else 2
+                    gp = apply_dx_dy(self.grid_pos, (0, dy))
+                    side = chess.report(gp, self.color)
+                    if side == 'none':
+                        legal_moves.append(gp)
         return legal_moves
 
 
-def create_pieces(piece_images):
+# 3. remove piece_images and piece_images.get_image(color, role)
+def create_pieces():
     return [
-        Rook(piece_images.get_image('black', 'rook'), 'black', (0, 0)),
-        Knight(piece_images.get_image('black', 'knight'), 'black', (0, 1)),
-        Bishop(piece_images.get_image('black', 'bishop'), 'black', (0, 2)),
-        Queen(piece_images.get_image('black', 'queen'), 'black', (0, 3)),
-        King(piece_images.get_image('black', 'king'), 'black', (0, 4)),
-        Bishop(piece_images.get_image('black', 'bishop'), 'black', (0, 5)),
-        Knight(piece_images.get_image('black', 'knight'), 'black', (0, 6)),
-        Rook(piece_images.get_image('black', 'rook'), 'black', (0, 7)),
-        *[Pawn(piece_images.get_image('black', 'pawn'), 'black', (1, n)) for n in range(8)],
+        Rook('black', (0, 0)),
+        Knight('black', (0, 1)),
+        Bishop('black', (0, 2)),
+        Queen('black', (0, 3)),
+        King('black', (0, 4)),
+        Bishop('black', (0, 5)),
+        Knight('black', (0, 6)),
+        Rook('black', (0, 7)),
+        *[Pawn('black', (1, n)) for n in range(8)],
 
-        *[Pawn(piece_images.get_image('white', 'pawn'), 'white', (6, n)) for n in range(8)],
-        Rook(piece_images.get_image('white', 'rook'), 'white', (7, 0)),
-        Knight(piece_images.get_image('white', 'knight'), 'white', (7, 1)),
-        Bishop(piece_images.get_image('white', 'bishop'), 'white', (7, 2)),
-        Queen(piece_images.get_image('white', 'queen'), 'white', (7, 3)),
-        King(piece_images.get_image('white', 'king'), 'white', (7, 4)),
-        Bishop(piece_images.get_image('white', 'bishop'), 'white', (7, 5)),
-        Knight(piece_images.get_image('white', 'knight'), 'white', (7, 6)),
-        Rook(piece_images.get_image('white', 'rook'), 'white', (7, 7))
+        *[Pawn('white', (6, n)) for n in range(8)],
+        Rook('white', (7, 0)),
+        Knight('white', (7, 1)),
+        Bishop('white', (7, 2)),
+        Queen('white', (7, 3)),
+        King('white', (7, 4)),
+        Bishop('white', (7, 5)),
+        Knight('white', (7, 6)),
+        Rook('white', (7, 7))
     ]
 
 
@@ -262,9 +298,10 @@ class Chess:
         self.pieces = pieces
         self.deadpile = []
         self.player = 'white'
-        self.winner = 'none'
+        self.winner = None
         self.en_passant = None
         self.check = False
+        self.checkmate = False
 
     def clone(self):
         new_pieces = [piece.clone() for piece in self.pieces]
@@ -273,6 +310,7 @@ class Chess:
         new_chess.winner = self.winner
         new_chess.en_passant = self.en_passant
         new_chess.check = self.check
+        new_chess.checkmate = self.checkmate
         return new_chess
 
     def compute_legal_moves(self, piece):
@@ -303,10 +341,19 @@ class Chess:
         danger_zone = []
         oppo_pieces = filter(lambda x: x.color != color, self.pieces)
         for oppo_piece in oppo_pieces:
-            danger_zone += oppo_piece.get_legal_moves(self)
+            danger_zone += oppo_piece.get_legal_moves(self, ignore_castle=True)
         return set(danger_zone)
 
-    def apply_move(self, source, destination, promotion=None):
+    def get_all_moves(self):
+        pieces = list(filter(lambda x: x.color == self.player, self.pieces))
+        moves = []
+        for piece in pieces:
+            destinations = piece.get_legal_moves(self)
+            for destination in destinations:
+                moves.append((piece.grid_pos, destination))
+        return moves
+
+    def apply_move(self, source, destination, promotion=None, checkmate_check=True):
         # check the state
         for piece in self.pieces:
             if piece.grid_pos == source:
@@ -324,7 +371,6 @@ class Chess:
                                 self.deadpile.append(oppo_piece)
                                 if isinstance(oppo_piece, King):
                                     self.winner = 'black' if oppo_piece.color == 'white' else 'white'
-                                    print(f'{self.winner} won!!!')
                                 break
                         # move
                         self.en_passant = None  # Muse be placed AFTER capture
@@ -340,16 +386,17 @@ class Chess:
                             rook.grid_pos = gpd
                             rook.moved = True
                         piece.grid_pos = destination
+                        # 4. Fix promotion
                         if promotion and isinstance(piece, Pawn) and (destination[0] == 0 or destination[0] == 7):
-                            (role, image) = promotion
+                            role = promotion
                             if role == 'queen':
-                                new_piece = Queen(image, piece.color, destination)
+                                new_piece = Queen(piece.color, destination)
                             elif role == 'bishop':
-                                new_piece = Bishop(image, piece.color, destination)
+                                new_piece = Bishop(piece.color, destination)
                             elif role == 'knight':
-                                new_piece = Knight(image, piece.color, destination)
+                                new_piece = Knight(piece.color, destination)
                             else:
-                                new_piece = Rook(image, piece.color, destination)
+                                new_piece = Rook(piece.color, destination)
                             self.pieces.remove(piece)
                             self.deadpile.append(piece)
                             self.pieces.append(new_piece)
@@ -359,13 +406,35 @@ class Chess:
                             self.en_passant = destination
                         # check?
                         self.check = False
-                        if self.winner == 'none':
+                        if self.winner is None:
                             danger_zone = self.get_danger_zone('black' if self.player == 'white' else 'white')
                             oppo_king = next(filter(lambda x: isinstance(x, King) and x.color != self.player, self.pieces))
-                            if oppo_king.grid_pos in danger_zone:
-                                self.check = True
-                                print('Check!')
+                            # 1. detect Checkmate! only inside check
+                            self.check = oppo_king.grid_pos in danger_zone
                         self.player = 'white' if self.player == 'black' else 'black'
+                        # detect no move situation after switched
+                        if self.get_all_moves() is None:
+                            self.winner = 'black' if self.player == 'white' else 'white'
+                        # 2. perform checkmate detection after switching player
+                        if self.check and checkmate_check:
+                            self.checkmate = False
+                            checkmate = True
+                            for move in self.get_all_moves():
+                                new_chess = self.clone()
+                                # 3. checkmate_check=False to avoid infinite recursive
+                                new_chess.apply_move(move[0], move[1], checkmate_check=False)
+                                # after apply_move, the player is switched back to me
+                                oppo_color = 'black' if new_chess.player == 'white' else 'white'
+                                oppo_king = next(
+                                    filter(lambda x: isinstance(x, King) and x.color == oppo_color, new_chess.pieces))
+                                if oppo_king.grid_pos in new_chess.get_danger_zone(oppo_color):
+                                    continue
+                                checkmate = False
+                                # print(f'Checkmate is broken move={move}')
+                                break
+                            if checkmate:
+                                self.winner = 'black' if self.player == 'white' else 'white'
+                                self.checkmate = True
                 break
 
     def evaluate(self):
@@ -386,7 +455,8 @@ class Human(Player):
 
 
 class Monkey(Player):
-    def get_move(self, chess, piece_images):
+    # 7. remove piece_images
+    def get_move(self, chess):
         pieces = list(filter(lambda x: x.color == self.color, chess.pieces))
         moves = []
         for piece in pieces:
@@ -395,13 +465,13 @@ class Monkey(Player):
                 moves.append((piece.grid_pos, destination))
         move = random.choice(moves)
         promotion = None
-        if (destination[0] == 0 or destination[0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
-            promotion = 'queen', piece_images.get_image(self.color, 'queen')
+        if (move[1][0] == 0 or move[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
+            promotion = 'queen'
         return move, promotion
 
 
 class Greedy(Player):
-    def get_move(self, chess, piece_images):
+    def get_move(self, chess):
         pieces = list(filter(lambda x: x.color == self.color, chess.pieces))
         moves = []
         for piece in pieces:
@@ -415,33 +485,22 @@ class Greedy(Player):
             next_chess.apply_move(move[0], move[1])
             return next_chess.evaluate()
         values = [get_value(move) for move in moves]
-        for i, move in enumerate(moves):
-            print(move, values[i])
         max_value = max(values) if self.color == 'white' else min(values)
         valid_moves = list(filter(lambda x: get_value(x) == max_value, moves))
-        print(valid_moves)
         move = random.choice(valid_moves)
         promotion = None
         if (move[1][0] == 0 or move[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
-            promotion = 'queen', piece_images.get_image(self.color, 'queen')
+            promotion = 'queen'
         return move, promotion
 
 
-# Explain Minimax in details but a understandable way before proceed to implementing `Thinky`
-class Thinky(Player):
-    # 1. break up `get_all_moves` to its own method
-    def get_all_moves(self, chess, color):
-        pieces = list(filter(lambda x: x.color == color, chess.pieces))
-        moves = []
-        for piece in pieces:
-            destinations = piece.get_legal_moves(chess)
-            for destination in destinations:
-                moves.append((piece.grid_pos, destination))
-        return moves
+indent = 0
 
-    # 2. implement minimax by setting depth to 0 in `get_move`
-    def minimax(self, chess, depth, piece_images):
-        moves = self.get_all_moves(chess, chess.player)
+
+class Thinky(Player):
+    def minimax(self, chess, depth, alpha, beta):
+        moves = chess.get_all_moves()
+        global indent
         if depth == 0:
             def get_value(move):
                 next_chess = chess.clone()
@@ -454,34 +513,52 @@ class Thinky(Player):
             move = random.choice(valid_moves)
             promotion = None
             if (moves[1][0] == 0 or moves[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
-                promotion = 'queen', piece_images.get_image(chess.player, 'queen')
+                promotion = 'queen'
+            print(' ' * 4 * indent, end='')
+            print(f'{depth}: move={move} value={max_value}')
             return move, promotion, max_value
         else:
-            # set this to random a move first when the original depth is 0
-            # complete the implementation below when original depth is 1
-            # pre-flipped because of the opposite player's score
-            extreme_value = -100000000 if chess.player == 'white' else 100000000
+            extreme_value = -math.inf if chess.player == 'white' else math.inf
             extreme_move_promotions = []
-            for move in moves:
+            n = len(moves)
+            for i, move in enumerate(moves):
                 promotion = None
                 if (moves[1][0] == 0 or moves[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
-                    promotion = 'queen', piece_images.get_image(chess.player, 'queen')
+                    promotion = 'queen'
                 new_chess = chess.clone()
                 new_chess.apply_move(move[0], move[1])
-                new_move, new_promotion, new_value = self.minimax(new_chess, depth - 1, piece_images)
+                print(' ' * 4 * indent, end='')
+                print(f'{depth}: Evaluate move [{i}/{n}]:{move}')
+                indent += 1
+                new_move, new_promotion, new_value = \
+                    self.minimax(new_chess, depth - 1, alpha, beta)
+                indent -= 1
                 if (chess.player == 'white' and new_value >= extreme_value) or \
                    (chess.player == 'black' and new_value <= extreme_value):
                     if new_value != extreme_value:
                         extreme_move_promotions.clear()
                     extreme_value = new_value
                     extreme_move_promotions.append((move, promotion))
+                if chess.player == 'white':
+                    alpha = max(extreme_value, alpha)
+                else:
+                    beta = min(extreme_value, beta)
+                if alpha >= beta:
+                    break
             extreme_move, extreme_promotion = random.choice(extreme_move_promotions)
+            print(' ' * 4 * indent, end='')
+            print(f'{depth}: move={extreme_move} value={extreme_value}')
             return extreme_move, extreme_promotion, extreme_value
 
-    def get_move(self, chess, piece_images):
-        # first set depth to 0 and run the game, then set to 1
-        move, promotion, value = self.minimax(chess, 2, piece_images)
+    def get_move(self, chess):
+        move, promotion, value = self.minimax(chess, 2, -math.inf, math.inf)
         return move, promotion
+
+
+def notation(move) -> str:
+    def coord(row_column) -> str:
+        return str(chr(row_column[1] + 65)) + str(8 - row_column[0])
+    return coord(move[0]) + '-' + coord(move[1])
 
 
 class App:
@@ -489,12 +566,12 @@ class App:
         pg.init()
         self.screen = pg.display.set_mode(RESOLUTION)
         self.piece_images = PiecesImage('chess_pieces.png', self.screen)
-        self.chess = Chess(create_pieces(self.piece_images))
-        self.saves = [self.chess.clone()]   # 1. add a new field and initialize it
+        self.chess = Chess(create_pieces())
+        self.saves = [self.chess.clone()]
         self.state = 'free'
         self.hover = None
         self.source = None
-        self.players = [Human('white'), Thinky('black')]
+        self.players = [Human('white'), Greedy('black')]
 
     def draw_board(self):
         for row in range(8):
@@ -503,12 +580,18 @@ class App:
                 rect = grid_to_rect((row, column))
                 self.screen.fill(color, rect)
 
+    # 5. make draw_piece function
+    def draw_piece(self, piece):
+        image = self.piece_images.get_image(piece.color, piece.get_role())
+        image = pg.transform.scale(image, (GRID, GRID))
+        self.screen.blit(image, (piece.grid_pos[1] * GRID, piece.grid_pos[0] * GRID))
+
     def run(self):
         while True:
             # drawing
             pg.display.flip()
             self.draw_board()
-            [piece.draw(self.screen) for piece in self.chess.pieces]
+            [self.draw_piece(piece) for piece in self.chess.pieces]
 
             # draw self.hover
             if self.hover:
@@ -525,16 +608,16 @@ class App:
                 if event.type == pg.QUIT:
                     exit(0)
 
-                if self.chess.winner == 'none':
+                if self.chess.winner is None:
                     current_player = next(filter(lambda x: x.color == self.chess.player, self.players))
                     if isinstance(current_player, Human):
                         if event.type == pg.MOUSEMOTION:
-                            if self.state == 'free' and self.chess.winner == 'none':
+                            if self.state == 'free' and self.chess.winner is None:
                                 pos = pg.mouse.get_pos()
                                 self.hover = get_grid(pos)
                         elif event.type == pg.KEYDOWN:
                             if pg.key.get_pressed()[pg.K_COMMA]:
-                                if len(self.saves) >= 3:    ; # how to undo 2 steps
+                                if len(self.saves) >= 3:
                                     self.saves = self.saves[:-2]
                                     self.chess = self.saves[-1].clone()
                                     self.state = 'free'
@@ -564,19 +647,152 @@ class App:
                                             while answer < 1 or answer > 4:
                                                 answer = int(input('Promotion: [1]Queen [2]Bishop [3]Knight [4]Rook'))
                                             role = ['queen', 'bishop', 'knight', 'rook'][answer - 1]
-                                            image = self.piece_images.get_image(self.chess.player, role)
-                                            self.chess.apply_move(self.source, grid_pos, promotion=(role, image))
+                                            self.chess.apply_move(self.source, grid_pos, promotion=role)
                                         else:
                                             self.chess.apply_move(self.source, grid_pos)
-                                        self.saves.append(self.chess.clone())   # save a clone of move
+                                        print(f'{self.chess.get_piece(self.source).color}: {notation((self.source, grid_pos))}')
+                                        if self.chess.winner:
+                                            print(f'{self.chess.winner} won!!!')
+                                        elif self.chess.check:
+                                            print("Check!")
+                                        self.saves.append(self.chess.clone())
                                         self.state = 'free'
                                         self.hover = None
                                         self.source = None
                     else:
-                        move, promotion = current_player.get_move(self.chess, self.piece_images)
+                        move, promotion = current_player.get_move(self.chess)
                         print(move, promotion)
                         self.chess.apply_move(move[0], move[1], promotion=promotion)
-                        self.saves.append(self.chess.clone())   # clone a move
+                        print(notation(move))
+                        if self.chess.winner:
+                            print(f'{self.chess.winner} won!!!')
+                        elif self.chess.check:
+                            print("Check!")
+                        self.saves.append(self.chess.clone())
 
-app = App()
-app.run()
+
+def gui_app():
+    app = App()
+    app.run()
+
+
+# Q-Learning Paper
+# https://link.springer.com/article/10.1007/BF00992698
+#
+class QMatrix:
+    def __init__(self):
+        self.q_entries = {}
+
+    def __repr__(self):
+        return f"""QMatrix({self.q_entries})"""
+
+    def set_entry(self, state, action, value):
+        if state and action:
+            entry = self.q_entries.get(state, None)
+            if entry:
+                entry[action] = value
+            else:
+                self.q_entries[state] = {action: value}
+
+    def get_entry(self, state, action):
+        if state and action:
+            entry = self.q_entries.get(state, None)
+            if entry:
+                return entry.get(action, 0)
+        return 0
+
+
+class Trainer(Player):
+    def __init__(self, color: str, q_matrix: QMatrix, alpha: float, gamma: float, epsilon: float):
+        super().__init__(color)
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.q_matrix = q_matrix
+        self.last_state = None
+        self.last_action = None
+
+    def __repr__(self):
+        return f"""
+Trainer(alpha={self.alpha} gamma={self.gamma} epsilon={self.epsilon}
+{self.q_matrix})
+"""
+
+    def endgame(self, reward):
+        if self.last_state and self.last_action:
+            last_score = self.q_matrix.get_entry(self.last_state, self.last_action)
+            score = (1 - self.alpha) * last_score + self.alpha * reward
+            self.q_matrix.set_entry(self.last_state, self.last_action, score)
+
+    def get_move(self, chess: Chess):
+        chess_state = [('empty', '')] * 64
+        for piece in chess.pieces:
+            index = piece.grid_pos[0] * 8 + piece.grid_pos[1]
+            chess_state[index] = piece.color, piece.get_role()
+        chess_state = tuple(chess_state)
+        chess_moves = chess.get_all_moves()
+        if chess_moves is None:
+            for i, state in enumerate(chess_state):
+                role = state[1][:1]
+                if state[0] == 'white':
+                    role = role.upper()
+                print(role, end=' ')
+                if (i+1) % 8 == 0:
+                    print('')
+        # chess_state and all chess_moves are prepared
+        if random.random() <= self.epsilon:
+            move = random.choice(chess_moves)
+        else:
+            entries = [self.q_matrix.get_entry(chess_state, tuple(move)) for move in chess_moves]
+            # use Q-Learning formula to update
+            old_score = self.q_matrix.get_entry(self.last_state, self.last_action)
+            score = (1 - self.alpha) * old_score + self.alpha * self.gamma * max(entries)
+            self.q_matrix.set_entry(self.last_state, self.last_action, score)
+            valid_moves = list(filter(lambda x: self.q_matrix.get_entry(chess_state, x) == entries, chess_moves))
+            if valid_moves:
+                move = random.choice(valid_moves)
+            else:
+                move = random.choice(chess_moves)
+        self.last_state = chess_state
+        self.last_action = tuple(move)
+        return move, 'queen'
+
+
+class TrainingApp:
+    def __init__(self, trainer):
+        self.chess = Chess(create_pieces())
+        self.players = [Greedy('white'), trainer]
+
+    def run(self):
+        while self.chess.winner is None:
+            current_player = next(filter(lambda x: x.color == self.chess.player, self.players))
+            move, promotion = current_player.get_move(self.chess)
+            piece = self.chess.get_piece(move[0])
+            self.chess.apply_move(move[0], move[1])
+            check_str = 'Checkmate!' if self.chess.checkmate else 'Check!' if self.chess.check else ''
+            print(f'{piece.color} {piece.get_role()}: {notation(move)} {check_str}')
+        trainers = list(filter(lambda x: isinstance(x, Trainer), self.players))
+        print(f"The winner is {self.chess.winner}")
+        for trainer in trainers:
+            reward = 1 if trainer.color == self.chess.winner else -1
+            trainer.endgame(reward)
+        return list(filter(lambda x: isinstance(x, Trainer), self.players))
+
+
+# Try 10 games:
+# 1. use my_trainer that persists for all games
+# 2. gradually reduce epsilon
+# 3. print the moves and detect and fix errors
+# 4. print my_trainer after each game to examine the results
+num_games = 10
+epsilon = 1.0
+epsilon_delta = 1 / num_games
+my_trainer = Trainer('black', QMatrix(), 0.1, 0.1, epsilon)
+for game in range(num_games):
+    app = TrainingApp(my_trainer)
+    my_trainer = app.run()[0]
+    print(my_trainer)
+    my_trainer.epsilon -= epsilon_delta
+
+
+

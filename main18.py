@@ -375,6 +375,9 @@ class Chess:
                             # 1. detect Checkmate! only inside check
                             self.check = oppo_king.grid_pos in danger_zone
                         self.player = 'white' if self.player == 'black' else 'black'
+                        # detect no move situation after switched
+                        if self.get_all_moves() is None:
+                            self.winner = 'black' if self.player == 'white' else 'white'
                         # 2. perform checkmate detection after switching player
                         if self.check and checkmate_check:
                             checkmate = True
@@ -447,7 +450,7 @@ class Greedy(Player):
         valid_moves = list(filter(lambda x: get_value(x) == max_value, moves))
         move = random.choice(valid_moves)
         promotion = None
-        if (moves[1][0] == 0 or moves[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
+        if (move[1][0] == 0 or move[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
             promotion = 'queen', piece_images.get_image(self.color, 'queen')
         return move, promotion
 

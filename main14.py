@@ -428,7 +428,7 @@ class Greedy(Player):
         print(valid_moves)
         move = random.choice(valid_moves)
         promotion = None
-        if (moves[1][0] == 0 or moves[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
+        if (move[1][0] == 0 or move[1][0] == 7) and isinstance(chess.get_piece(move[0]), Pawn):
             promotion = 'queen', piece_images.get_image(self.color, 'queen')
         return move, promotion
 
