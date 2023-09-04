@@ -21,6 +21,8 @@ import math
 # Lesson 17: Alpha/Beta Pruning (and fix infinity loop in castling)
 # Lesson 18: Checkmate! and add Notation
 # Lesson 19: Refactor draw and image and fix danger_zone
+# Lesson 20: Q-Learning: Setup Q-Matrix and train one game
+
 
 GRID = 80
 WIDTH, HEIGHT = 8 * GRID, 8 * GRID
@@ -662,5 +664,105 @@ class App:
                         self.saves.append(self.chess.clone())
 
 
-app = App()
+def gui_app():
+    app = App()
+    app.run()
+
+
+# Q-Learning Paper
+# https://link.springer.com/article/10.1007/BF00992698
+#
+class QMatrix:
+    def __init__(self):
+        self.q_entries = {}
+
+    def __repr__(self):
+        return f"""QMatrix({self.q_entries})"""
+
+    def set_entry(self, state, action, value):
+        if state and action:
+            entry = self.q_entries.get(state, None)
+            if entry:
+                entry[action] = value
+            else:
+                self.q_entries[state] = {action: value}
+
+    def get_entry(self, state, action):
+        if state and action:
+            entry = self.q_entries.get(state, None)
+            if entry:
+                return entry.get(action, 0)
+        return 0
+
+
+class Trainer(Player):
+    def __init__(self, color: str, q_matrix: QMatrix, alpha: float, gamma: float, epsilon: float):
+        super().__init__(color)
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.q_matrix = q_matrix
+        self.last_state = None
+        self.last_action = None
+
+    def __repr__(self):
+        return f"""
+Trainer(alpha={self.alpha} gamma={self.gamma} epsilon={self.epsilon}
+{self.q_matrix})
+"""
+
+    def endgame(self, reward):
+        if self.last_state and self.last_action:
+            last_score = self.q_matrix.get_entry(self.last_state, self.last_action)
+            score = (1 - self.alpha) * last_score + self.alpha * reward
+            self.q_matrix.set_entry(self.last_state, self.last_action, score)
+
+    def get_move(self, chess: Chess):
+        chess_state = [('empty', '')] * 64
+        for piece in chess.pieces:
+            index = piece.grid_pos[0] * 8 + piece.grid_pos[1]
+            chess_state[index] = piece.color, piece.get_role()
+        chess_state = tuple(chess_state)
+        chess_moves = chess.get_all_moves()
+        # chess_state and all chess_moves are prepared
+        if random.random() <= self.epsilon:
+            move = random.choice(chess_moves)
+        else:
+            entries = [self.q_matrix.get_entry(chess_state, tuple(move)) for move in chess_moves]
+            # use Q-Learning formula to update
+            old_score = self.q_matrix.get_entry(self.last_state, self.last_action)
+            score = (1 - self.alpha) * old_score + self.alpha * self.gamma * max(entries)
+            self.q_matrix.set_entry(self.last_state, self.last_action, score)
+            valid_moves = list(filter(lambda x: self.q_matrix.get_entry(chess_state, x) == entries, chess_moves))
+            if valid_moves:
+                move = random.choice(valid_moves)
+            else:
+                move = random.choice(chess_moves)
+        self.last_state = chess_state
+        self.last_action = tuple(move)
+        return move, 'queen'
+
+
+class TrainingApp:
+    def __init__(self):
+        self.chess = Chess(create_pieces())
+        self.players = [Greedy('white'), Trainer('black', QMatrix(), 0.1, 0.1, 0.99)]
+
+    def run(self):
+        while self.chess.winner is None:
+            current_player = next(filter(lambda x: x.color == self.chess.player, self.players))
+            move, promotion = current_player.get_move(self.chess)
+            print(notation(move))
+            self.chess.apply_move(move[0], move[1])
+        trainers = list(filter(lambda x: isinstance(x, Trainer), self.players))
+        print(f"The winner is {self.chess.winner}")
+        for trainer in trainers:
+            reward = 1 if trainer.color == self.chess.winner else -1
+            trainer.endgame(reward)
+            print(trainer)
+
+
+app = TrainingApp()
 app.run()
+
+

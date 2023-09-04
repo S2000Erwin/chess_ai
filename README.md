@@ -21,7 +21,7 @@ Teach Grade 7~9 students how to write a Chess game in Python from scratch and th
 * main17.py is alpha beta pruning which speeds up MinMax
 * main18.py adds checkmate detection and notation
 * main19.py refactor draw and image. Also fixed danger_zone for King movement
-* TODO: Reinforcement Learning (Q-Learning)
+* main20.py prepare for Q-Learning. Setup Q-Matrix and train one game.
 * TODO: Deep-Q Learning
 
 Enjoy!
