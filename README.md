@@ -23,6 +23,8 @@ Teach Grade 7~9 students how to write a Chess game in Python from scratch and th
 * main19.py refactor draw and image. Also fixed danger_zone for King movement
 * main20.py prepare for Q-Learning. Setup Q-Matrix and train one game.
 * main21.py training in 10 games
+* main22.py run FastAPI with React Frontend to act as a webapp.
+    use `python -m main22` to run.
 * TODO: Deep-Q Learning
 
 Enjoy!

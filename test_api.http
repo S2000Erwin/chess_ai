@@ -1,0 +1,27 @@
+# This file is used by REST Client VSCode Extension
+# BASE_URL is set in settings.json
+
+@url={{BASE_URL}}
+
+### Get current board status
+GET {{url}}/api/status
+Accept: application/json
+
+###
+
+POST {{url}}/api/move
+Content-Type: application/json
+
+{
+  "source": "b2",
+  "target": "b4",
+  "piece": "wP"
+}
+
+### Reset Game
+GET {{url}}/api/reset
+Accept: application/json
+
+### Get valid moves
+GET {{url}}/api/valid_moves?square=b2
+Accept: application/json
